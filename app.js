@@ -145,10 +145,10 @@ function render() {
     const idx = state.ipos.indexOf(ipo);
     return `<tr>
       <td><span class="company">${escapeHtml(getName(ipo))}</span><span class="subline">${escapeHtml(asText(findValue(ipo, ["symbol","category","exchange","issue type"])))}</span></td>
+      <td>${escapeHtml(getGmp(ipo))}</td>
       <td>${escapeHtml(getPrice(ipo))}</td>
       <td>${escapeHtml(getOpenDate(ipo))}</td>
       <td>${escapeHtml(getCloseDate(ipo))}</td>
-      <td>${escapeHtml(getGmp(ipo))}</td>
       <td><span class="status status-${status}">${labelStatus(status)}</span></td>
       <td><button class="details-link" data-detail="${idx}" type="button">View details →</button></td>
     </tr>`;
