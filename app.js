@@ -1,4 +1,4 @@
-const state = { ipos: [], filter: "all", category: "all", query: "" };
+const state = { ipos: [], filter: "all", category: "mainboard", query: "" };
 const $ = (id) => document.getElementById(id);
 
 const STATUS_WORDS = {
