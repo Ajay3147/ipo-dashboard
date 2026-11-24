@@ -79,18 +79,8 @@ const server = http.createServer(async (req, res) => {
   const filePath = path.resolve(ROOT, "." + pathname);
   if (!filePath.startsWith(ROOT + path.sep)) return send(res, 403, { error: "Forbidden" });
 
-fs.readFile(filePath, (err, data) => {
-    if (err) {
-        console.error("File serving error:", {
-            requestedPath: pathname,
-            filePath: filePath,
-            errorCode: err.code,
-            errorMessage: err.message
-        });
-
-        return send(res, 404, "Not found",
-            "text/plain; charset=utf-8");
-    }
+  fs.readFile(filePath, (err, data) => {
+    if (err) return send(res, 404, "Not found", "text/plain; charset=utf-8");
     res.writeHead(200, {
       "Content-Type": pathname === "/manifest.json" ? "application/manifest+json" : (MIME[path.extname(filePath)] || "application/octet-stream"),
       "Cache-Control": "no-cache",
