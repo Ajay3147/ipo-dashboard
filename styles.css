@@ -105,3 +105,18 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .install-help h2{font-size:18px;margin:0 0 8px}.install-help ol{padding-left:20px}.install-help form{text-align:right}.install-help .button{background:#6258d9;color:white;border:0}
 #installBtn[hidden],.gmp-pop[hidden]{display:none!important}
 @media(max-width:380px){.ipo-card .ipo-dates-gains{gap:3px;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr) repeat(2,minmax(0,1fr))}.ipo-card .ipo-dates-gains .ipo-label{font-size:9px}.ipo-card .ipo-dates-gains strong{font-size:10px}.ipo-card .ipo-dates-gains .ipo-label svg{display:none}.ipo-card .ipo-dates-gains .gmp-info{flex-basis:12px;width:12px}}
+
+/* V11.1: enforce one row on mobile, including legacy grid overrides. */
+.ipo-card .ipo-fields.ipo-dates.ipo-dates-gains{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);gap:3px;align-items:start}
+.ipo-card .ipo-fields.ipo-dates.ipo-dates-gains>div{grid-column:auto;grid-row:auto;min-width:0;text-align:left}
+.ipo-card .ipo-dates-gains .ipo-label{font-size:10px;white-space:nowrap;gap:2px}
+.ipo-card .ipo-dates-gains strong{font-size:11px;line-height:1.25}
+.ipo-card .ipo-dates-gains .gmp-value strong{white-space:nowrap;overflow-wrap:normal}
+@media(max-width:700px){
+ .ipo-card .ipo-fields.ipo-dates.ipo-dates-gains{grid-template-columns:minmax(0,1.35fr) repeat(3,minmax(0,1fr));gap:3px}
+ .ipo-card .ipo-dates-gains .ipo-label{font-size:9px}
+ .ipo-card .ipo-dates-gains .ipo-label svg{display:none}
+ .ipo-card .ipo-dates-gains strong{font-size:10px}
+ .ipo-card .ipo-dates-gains .gmp-info{width:12px;flex-basis:12px;font-size:11px}
+ .ipo-card .ipo-dates-gains>div:nth-child(-n+2) strong{white-space:normal;overflow-wrap:normal}
+}
