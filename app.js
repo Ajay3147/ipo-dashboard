@@ -240,3 +240,10 @@ $("closeModal").addEventListener("click", closeDetails);
 $("detailModal").addEventListener("click", e => { if (e.target.dataset.close) closeDetails(); });
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeDetails(); });
 loadIpos();
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/service-worker.js")
+      .catch(error => console.error("Service Worker:", error));
+  });
+}
