@@ -161,6 +161,31 @@ function percentText(percent) {
 function percentClass(percent) {
   return percent > 0 ? "gmp-positive" : percent < 0 ? "gmp-negative" : "gmp-neutral";
 }
+// Exact aliases only: never confuse GMP or offer price with traded prices.
+function gainNumber(value) {
+  if (typeof value !== "number" && typeof value !== "string") return null;
+  const clean=String(value).replace(/[₹,%\s]/g, "");
+  if (!clean || !/^[+-]?\d+(?:\.\d+)?$/.test(clean)) return null;
+  const n=Number(clean); return Number.isFinite(n)?n:null;
+}
+function gainParts(ipo, kind) {
+  const listing=kind==="listing";
+  const price=gainNumber(exactValue(ipo, listing?["listingprice","listedprice","listingopenprice"]:["currentprice","currentmarketprice","lasttradedprice","ltp","cmp"]));
+  const issue=gainNumber(exactValue(ipo,["finalissueprice","finalofferprice","allotmentprice","issueprice"]));
+  const explicit=gainNumber(exactValue(ipo,listing?["listinggainpercentage","listinggainpercent","listinggainpct","listinggain"]:["currentgainpercentage","currentgainpercent","currentgainpct","currentgain"]));
+  return {price, percent:explicit ?? (price!==null && price>0 && issue!==null && issue>0 ? (price-issue)/issue*100:null)};
+}
+function isListed(ipo) {
+  if(statusOf(ipo)==="listed") return true;
+  if(statusOf(ipo)!=="closed") return false;
+  const d=ipoDate(ipo,"listing");
+  return !!d && d<=new Date() && ["listing","current"].some(k=>{const g=gainParts(ipo,k);return g.percent!==null || g.price>0;});
+}
+function gainMetric(ipo,kind) {
+  const g=gainParts(ipo,kind), name=kind==="listing"?"Listing":"Current";
+  const price=g.price!==null && g.price>0 ? `₹${g.price.toLocaleString("en-IN",{maximumFractionDigits:2})}`:"Unavailable";
+  return `<div>${label(kind==="listing"?"trend":"chart",name+" gain")}<div class="gmp-value"><strong class="${percentClass(g.percent)}">${percentText(g.percent)}</strong><button type="button" class="gmp-info" aria-label="Show ${name.toLowerCase()} price" aria-expanded="false" title="${name} price: ${price}">ⓘ</button><span class="gmp-pop" hidden>${name} price: ${price}</span></div></div>`;
+}
 function getGmp(ipo) {
   const {amount, percent} = gmpParts(ipo);
   return amount + (percent === null ? "" : ` (${percentText(percent)})`);
@@ -216,16 +241,16 @@ function render() {
     return;
   }
   grid.innerHTML = filtered.map(ipo => {
-    const status = statusOf(ipo);
+    const status = isListed(ipo) ? "listed" : statusOf(ipo);
     const idx = state.ipos.indexOf(ipo);
     const {amount, percent} = gmpParts(ipo);
     const category = categoryOf(ipo);
     return `<article class="ipo-card">
       <div class="ipo-card-head"><div><h3>${escapeHtml(getName(ipo))}</h3>${category === "unknown" ? "" : `<span class="ipo-category ipo-category-${category}">${categoryLabel(category)}</span>`}</div><div class="ipo-card-actions"><span class="status status-${status}">${labelStatus(status)}</span><button class="details-link ipo-details" data-detail="${idx}" type="button" aria-label="View IPO details">Details →</button></div></div>
-      <div class="ipo-fields ipo-metrics">${metric("tag","Offer price",getPrice(ipo))}${metric("layers","Lot size",getLotSize(ipo))}${metric("wallet","Issue size",getIssueSize(ipo))}</div>
-      <div class="ipo-gmp"><div>${label("trend","GMP %")}<div class="gmp-value"><strong class="${percentClass(percent)}">${percentText(percent)}</strong><button type="button" class="gmp-info" aria-label="Show GMP price" aria-expanded="false" title="GMP price: ${escapeHtml(amount)}">ⓘ</button><span class="gmp-pop" hidden>GMP price: ${escapeHtml(amount)}</span></div></div>${metric("rupee","Min. investment",minInvestment(ipo))}${metric("chart","Subscription",getSubscription(ipo))}</div>
+      <div class="ipo-fields ipo-metrics">${metric("tag","Offer Price",getPrice(ipo))}${metric("layers","Lot Size",getLotSize(ipo))}${metric("wallet","Issue Size",getIssueSize(ipo))}</div>
+      <div class="ipo-gmp"><div>${label("trend","GMP")}<div class="gmp-value"><strong class="${percentClass(percent)}">${percentText(percent)}</strong><button type="button" class="gmp-info" aria-label="Show GMP price" aria-expanded="false" title="GMP Price: ${escapeHtml(amount)}">ⓘ</button><span class="gmp-pop" hidden>GMP Price: ${escapeHtml(amount)}</span></div></div>${metric("rupee","Min. investment",minInvestment(ipo))}${metric("chart","Subscription",getSubscription(ipo))}</div>
       <div class="gmp-disclaimer"><span aria-hidden="true">ⓘ</span><span>GMP is unofficial and unregulated, and not an indicator of listing price. SEBI has advised against relying on it (PR No. 75/2026). Not investment advice.</span></div>
-      <div class="ipo-fields ipo-dates">${metric("calendar","Offer date",offerDate(ipo))}${metric("check","Listing date",getListingDate(ipo))}</div>
+      <div class="ipo-fields ipo-dates${isListed(ipo)?" ipo-dates-gains":""}">${metric("calendar","Offer Date",offerDate(ipo))}${metric("check","Listing Date",getListingDate(ipo))}${isListed(ipo)?gainMetric(ipo,"listing")+gainMetric(ipo,"current"):""}</div>
     </article>`;
   }).join("");
   grid.querySelectorAll(".gmp-info").forEach(btn => btn.addEventListener("click", () => { const pop=btn.nextElementSibling; pop.hidden=!pop.hidden; btn.setAttribute("aria-expanded",String(!pop.hidden)); }));
@@ -246,7 +271,8 @@ function openDetails(ipo) {
     ["Listing date", getListingDate(ipo)],
     ["Minimum investment", minInvestment(ipo)],
     ["Total subscription", getSubscription(ipo)],
-    ["GMP", getGmp(ipo)]
+    ["GMP", getGmp(ipo)],
+    ...(isListed(ipo)?[["Listing Gain",percentText(gainParts(ipo,"listing").percent)],["Current Gain",percentText(gainParts(ipo,"current").percent)]]:[])
   ];
   const used = new Set();
   let html = preferred.map(([k,v]) => {
@@ -338,16 +364,19 @@ if ("serviceWorker" in navigator) {
 
 let installPrompt;
 const installButton = $("installBtn");
+const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const standalone = () => navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+if (ios && !standalone()) installButton.hidden = false;
 window.addEventListener("beforeinstallprompt", event => {
-  event.preventDefault();
-  installPrompt = event;
-  installButton.hidden = false;
+  event.preventDefault(); installPrompt = event;
+  if (!standalone()) installButton.hidden = false;
 });
 installButton.addEventListener("click", async () => {
-  if (!installPrompt) return;
-  const prompt = installPrompt;
-  installPrompt = null;
-  installButton.hidden = true;
-  await prompt.prompt();
+  if (standalone()) return;
+  if (installPrompt) {
+    const prompt = installPrompt; installPrompt = null;
+    try { await prompt.prompt(); const choice=await prompt.userChoice; installButton.hidden=choice.outcome==="accepted"; }
+    catch { $("installHelp").showModal(); }
+  } else { $("installHelp").showModal(); }
 });
 window.addEventListener("appinstalled", () => { installButton.hidden = true; installPrompt = null; });
