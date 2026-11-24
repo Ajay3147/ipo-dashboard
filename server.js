@@ -28,6 +28,7 @@ const MIME = {
   ".css": "text/css; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
+  ".png": "image/png",
   ".ico": "image/x-icon"
 };
 
@@ -74,6 +75,7 @@ const server = http.createServer(async (req, res) => {
 
   let pathname = decodeURIComponent(url.pathname);
   if (pathname === "/") pathname = "/index.html";
+  if (!new Set(["/index.html", "/styles.css", "/app.js", "/manifest.json", "/service-worker.js", "/icons/icon-192.png", "/icons/icon-512.png"]).has(pathname)) return send(res, 404, "Not found", "text/plain; charset=utf-8");
   const filePath = path.resolve(ROOT, "." + pathname);
   if (!filePath.startsWith(ROOT + path.sep)) return send(res, 403, { error: "Forbidden" });
 
