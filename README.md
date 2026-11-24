@@ -41,3 +41,7 @@ Click **Refresh** in the dashboard to fetch the latest API data.
 ## Deploy later
 
 For deployment, use a host that supports a server-side Node.js process (not static-only hosting), configure `IPOGURU_API_KEY` as a server environment variable, and deploy the project. Never put the key in frontend JavaScript.
+
+## Install on Android (Chrome)
+
+Deploy the Node server to an HTTPS host, with IPOGURU_API_KEY set on the server. Open the HTTPS URL on Android Chrome, then tap Install app (if shown), or Chrome menu > Add to Home screen > Install. The app opens in standalone mode. The app shell works offline; live IPO data requires internet. For LAN preview, connect both devices to the same Wi-Fi, run node server.js, find the PC IPv4 address using ipconfig and open http://PC-IP:3000 on the phone. Allow Node through the private-network firewall if needed. Plain LAN HTTP is not a secure context for service workers; use HTTPS for full PWA installation. localhost on the phone refers to the phone itself.
