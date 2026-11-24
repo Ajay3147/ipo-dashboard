@@ -62,7 +62,7 @@ function categoryOf(ipo) {
   return "unknown";
 }
 function categoryLabel(category) {
-  return ({mainboard:"Mainboard IPO", sme:"SME IPO", unknown:"Unclassified"})[category];
+  return ({mainboard:"Mainboard IPO", sme:"SME IPO", unknown:"—"})[category];
 }
 function extractRows(data) {
   if (Array.isArray(data)) return data.filter(x => x && typeof x === "object");
@@ -160,11 +160,16 @@ function showNotice(message, type = "") {
 }
 function hideNotice() { $("notice").className = "notice"; }
 
+function completeness(ipo) {
+  const {amount, percent} = gmpParts(ipo);
+  const present = value => !/^(?:₹\s*)?(?:—|–|-|n\/?a|null|undefined|tbd|tba|not available|to be announced)?$/i.test(String(value ?? "").trim());
+  return [getPrice(ipo), getLotSize(ipo), getIssueSize(ipo), amount, percent, getOpenDate(ipo), getCloseDate(ipo)].filter(present).length;
+}
 function render() {
   const counts = { upcoming:0, open:0, closed:0, listed:0, unknown:0 };
   const categories = {all:state.ipos.length, mainboard:0, sme:0, unknown:0};
   state.ipos.forEach(ipo => categories[categoryOf(ipo)]++);
-  Object.entries(categories).forEach(([key, count]) => $("category-" + key).textContent = count);
+  Object.entries(categories).forEach(([key, count]) => { const el = $("category-" + key); if (el) el.textContent = count; });
   const categoryRows = state.ipos.filter(ipo => state.category === "all" || categoryOf(ipo) === state.category);
   categoryRows.forEach(ipo => counts[statusOf(ipo)]++);
   $("upcomingCount").textContent = counts.upcoming;
@@ -180,6 +185,7 @@ function render() {
     return matchFilter && searchText.includes(state.query.toLowerCase());
   });
 
+  filtered.sort((a, b) => completeness(b) - completeness(a));
   $("resultCount").textContent = `${filtered.length} IPO${filtered.length === 1 ? "" : "s"}`;
   const grid = $("ipoRows");
   if (!filtered.length) {
@@ -192,7 +198,7 @@ function render() {
     const {amount, percent} = gmpParts(ipo);
     const category = categoryOf(ipo);
     return `<article class="ipo-card">
-      <div class="ipo-card-head"><div><h3>${escapeHtml(getName(ipo))}</h3><span class="ipo-category ipo-category-${category}">${categoryLabel(category)}</span></div><div class="ipo-card-actions"><span class="status status-${status}">${labelStatus(status)}</span><button class="details-link ipo-details" data-detail="${idx}" type="button" aria-label="View IPO details">Details →</button></div></div>
+      <div class="ipo-card-head"><div><h3>${escapeHtml(getName(ipo))}</h3>${category === "unknown" ? "" : `<span class="ipo-category ipo-category-${category}">${categoryLabel(category)}</span>`}</div><div class="ipo-card-actions"><span class="status status-${status}">${labelStatus(status)}</span><button class="details-link ipo-details" data-detail="${idx}" type="button" aria-label="View IPO details">Details →</button></div></div>
       <div class="ipo-fields ipo-metrics"><div><span class="ipo-label">Offer price</span><strong>${escapeHtml(getPrice(ipo))}</strong></div><div><span class="ipo-label">Lot size</span><strong>${escapeHtml(getLotSize(ipo))}</strong></div><div><span class="ipo-label">Issue size</span><strong>${escapeHtml(getIssueSize(ipo))}</strong></div></div>
       <div class="ipo-gmp"><div><span class="ipo-label">GMP</span><strong class="${percentClass(percent)}">${escapeHtml(amount)}</strong></div><div><span class="ipo-label">GMP percentage</span><strong class="${percentClass(percent)}">${percentText(percent)}</strong></div></div>
       <div class="ipo-fields ipo-dates"><div><span class="ipo-label">Open date</span><strong>${escapeHtml(getOpenDate(ipo))}</strong></div><div><span class="ipo-label">Close date</span><strong>${escapeHtml(getCloseDate(ipo))}</strong></div></div>
@@ -264,7 +270,7 @@ async function loadIpos() {
     hideNotice();
     $("connection").className = "connection ok";
     $("connection").innerHTML = "<i></i> API connected";
-    $("lastUpdated").textContent = new Date().toLocaleString();
+    $("lastUpdated").textContent = new Date().toLocaleString("en-IN", {day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit", hour12:true}).replace(/\b(am|pm)\b/gi, m => m.toUpperCase());
   } catch (err) {
     showNotice(err.message, "error");
     $("connection").className = "connection error";
