@@ -138,7 +138,7 @@ function dateDistance(ipo) {
   return d ? Math.abs(day(d)-day(new Date())) : Infinity;
 }
 const icons={tag:'<path d="M3 3h8l10 10-8 8L3 11z"/><circle cx="7.5" cy="7.5" r="1"/>',layers:'<path d="m12 3 9 5-9 5-9-5z M3 12l9 5 9-5 M3 16l9 5 9-5"/>',wallet:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M16 10h5v4h-5z"/>',trend:'<path d="m3 17 7-7 4 4 7-8 M15 6h6v6"/>',rupee:'<path d="M6 4h12 M6 8h12 M6 4c12 0 12 10 0 10l10 7"/>',chart:'<path d="M4 20V10 M12 20V4 M20 20V13"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4 M17 3v4 M3 10h18"/>',check:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4 M17 3v4 M3 10h18 m-6 5 3 3 4-5"/>'};
-function label(icon,text){return `<span class="ipo-label"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${icons[icon]}</svg>${text}</span>`;}
+function label(icon,text){return `<span class="ipo-label"><svg width="12" height="12" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${icons[icon]}</svg>${text}</span>`;}
 function metric(icon,title,value){return `<div>${label(icon,title)}<strong>${escapeHtml(value)}</strong></div>`;}
 
 function gmpParts(ipo) {
@@ -222,10 +222,10 @@ function render() {
     const category = categoryOf(ipo);
     return `<article class="ipo-card">
       <div class="ipo-card-head"><div><h3>${escapeHtml(getName(ipo))}</h3>${category === "unknown" ? "" : `<span class="ipo-category ipo-category-${category}">${categoryLabel(category)}</span>`}</div><div class="ipo-card-actions"><span class="status status-${status}">${labelStatus(status)}</span><button class="details-link ipo-details" data-detail="${idx}" type="button" aria-label="View IPO details">Details →</button></div></div>
-      <div class="ipo-fields ipo-metrics">${metric("tag","Offer Price",getPrice(ipo))}${metric("layers","Lot Size",getLotSize(ipo))}${metric("wallet","Issue Size",getIssueSize(ipo))}</div>
-      <div class="ipo-gmp"><div>${label("trend","GMP")}<div class="gmp-value"><strong class="${percentClass(percent)}">${percentText(percent)}</strong><button type="button" class="gmp-info" aria-label="Show GMP price" aria-expanded="false" title="GMP Price: ${escapeHtml(amount)}">ⓘ</button><span class="gmp-pop" hidden>GMP Price: ${escapeHtml(amount)}</span></div></div>${metric("rupee","Min. investment",minInvestment(ipo))}${metric("chart","Subscription",getSubscription(ipo))}</div>
+      <div class="ipo-fields ipo-metrics">${metric("tag","Offer price",getPrice(ipo))}${metric("layers","Lot size",getLotSize(ipo))}${metric("wallet","Issue size",getIssueSize(ipo))}</div>
+      <div class="ipo-gmp"><div>${label("trend","GMP %")}<div class="gmp-value"><strong class="${percentClass(percent)}">${percentText(percent)}</strong><button type="button" class="gmp-info" aria-label="Show GMP price" aria-expanded="false" title="GMP price: ${escapeHtml(amount)}">ⓘ</button><span class="gmp-pop" hidden>GMP price: ${escapeHtml(amount)}</span></div></div>${metric("rupee","Min. investment",minInvestment(ipo))}${metric("chart","Subscription",getSubscription(ipo))}</div>
       <div class="gmp-disclaimer"><span aria-hidden="true">ⓘ</span><span>GMP is unofficial and unregulated, and not an indicator of listing price. SEBI has advised against relying on it (PR No. 75/2026). Not investment advice.</span></div>
-      <div class="ipo-fields ipo-dates">${metric("calendar","Offer Date",offerDate(ipo))}${metric("check","Listing Date",getListingDate(ipo))}</div>
+      <div class="ipo-fields ipo-dates">${metric("calendar","Offer date",offerDate(ipo))}${metric("check","Listing date",getListingDate(ipo))}</div>
     </article>`;
   }).join("");
   grid.querySelectorAll(".gmp-info").forEach(btn => btn.addEventListener("click", () => { const pop=btn.nextElementSibling; pop.hidden=!pop.hidden; btn.setAttribute("aria-expanded",String(!pop.hidden)); }));
@@ -304,7 +304,7 @@ async function loadIpos() {
     $("connection").innerHTML = "<i></i> Connection issue";
   } finally {
     $("refreshBtn").disabled = false;
-    $("refreshBtn").textContent = "↻";
+    $("refreshBtn").textContent = "↻ Refresh";
   }
 }
 
