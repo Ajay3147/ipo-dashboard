@@ -69,3 +69,12 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
  .tabs{padding:0 8px;gap:12px}.tab{min-height:36px;padding:6px 0;font-size:11px}
  .ipo-grid{grid-template-columns:1fr;padding:6px;gap:6px}.ipo-card{padding:8px;gap:5px}.ipo-card-head h3{font-size:13px}.ipo-details{min-height:28px}.ipo-gmp{padding:5px 8px}.ipo-dates{padding-top:4px}
 }
+
+/* Larger mobile filter targets, without increasing card height. */
+@media(max-width:700px){
+ .category-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;overflow:visible}
+ .category-tab{min-height:44px;white-space:normal;font-size:12px;padding:5px 3px}
+ .tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;padding:0 5px;overflow:visible}
+ .tab{min-height:48px;font-size:13px;line-height:1.2;white-space:normal;padding:5px 2px}
+ .tab span{margin-left:2px;padding:2px 4px}
+}
