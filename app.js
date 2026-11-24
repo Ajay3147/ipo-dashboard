@@ -184,7 +184,7 @@ function isListed(ipo) {
 function gainMetric(ipo,kind) {
   const g=gainParts(ipo,kind), name=kind==="listing"?"Listing":"Current";
   const price=g.price!==null && g.price>0 ? `₹${g.price.toLocaleString("en-IN",{maximumFractionDigits:2})}`:"Unavailable";
-  return `<div>${label(kind==="listing"?"trend":"chart",name+" gain")}<div class="gmp-value"><strong class="${percentClass(g.percent)}">${percentText(g.percent)}</strong><button type="button" class="gmp-info" aria-label="Show ${name.toLowerCase()} price" aria-expanded="false" title="${name} price: ${price}">ⓘ</button><span class="gmp-pop" hidden>${name} price: ${price}</span></div></div>`;
+  return `<div>${label(kind==="listing"?"trend":"chart",name+" Gain")}<div class="gmp-value"><strong class="${percentClass(g.percent)}">${percentText(g.percent)}</strong><button type="button" class="gmp-info" aria-label="Show ${name} Price" aria-expanded="false" title="${name} Price: ${price}">ⓘ</button><span class="gmp-pop" hidden>${name} Price: ${price}</span></div></div>`;
 }
 function getGmp(ipo) {
   const {amount, percent} = gmpParts(ipo);
@@ -247,10 +247,10 @@ function render() {
     const category = categoryOf(ipo);
     return `<article class="ipo-card">
       <div class="ipo-card-head"><div><h3>${escapeHtml(getName(ipo))}</h3>${category === "unknown" ? "" : `<span class="ipo-category ipo-category-${category}">${categoryLabel(category)}</span>`}</div><div class="ipo-card-actions"><span class="status status-${status}">${labelStatus(status)}</span><button class="details-link ipo-details" data-detail="${idx}" type="button" aria-label="View IPO details">Details →</button></div></div>
-      <div class="ipo-fields ipo-metrics">${metric("tag","Offer Price",getPrice(ipo))}${metric("layers","Lot Size",getLotSize(ipo))}${metric("wallet","Issue Size",getIssueSize(ipo))}</div>
-      <div class="ipo-gmp"><div>${label("trend","GMP")}<div class="gmp-value"><strong class="${percentClass(percent)}">${percentText(percent)}</strong><button type="button" class="gmp-info" aria-label="Show GMP price" aria-expanded="false" title="GMP Price: ${escapeHtml(amount)}">ⓘ</button><span class="gmp-pop" hidden>GMP Price: ${escapeHtml(amount)}</span></div></div>${metric("rupee","Min. investment",minInvestment(ipo))}${metric("chart","Subscription",getSubscription(ipo))}</div>
+      <div class="ipo-fields ipo-metrics">${metric("tag","Offer price",getPrice(ipo))}${metric("layers","Lot size",getLotSize(ipo))}${metric("wallet","Issue size",getIssueSize(ipo))}</div>
+      <div class="ipo-gmp"><div>${label("trend","GMP %")}<div class="gmp-value"><strong class="${percentClass(percent)}">${percentText(percent)}</strong><button type="button" class="gmp-info" aria-label="Show GMP Price" aria-expanded="false" title="GMP Price: ${escapeHtml(amount)}">ⓘ</button><span class="gmp-pop" hidden>GMP Price: ${escapeHtml(amount)}</span></div></div>${metric("rupee","Min. investment",minInvestment(ipo))}${metric("chart","Subscription",getSubscription(ipo))}</div>
       <div class="gmp-disclaimer"><span aria-hidden="true">ⓘ</span><span>GMP is unofficial and unregulated, and not an indicator of listing price. SEBI has advised against relying on it (PR No. 75/2026). Not investment advice.</span></div>
-      <div class="ipo-fields ipo-dates${isListed(ipo)?" ipo-dates-gains":""}">${metric("calendar","Offer Date",offerDate(ipo))}${metric("check","Listing Date",getListingDate(ipo))}${isListed(ipo)?gainMetric(ipo,"listing")+gainMetric(ipo,"current"):""}</div>
+      <div class="ipo-fields ipo-dates${isListed(ipo)?" ipo-dates-gains":""}">${metric("calendar","Offer date",offerDate(ipo))}${metric("check","Listing date",getListingDate(ipo))}${isListed(ipo)?gainMetric(ipo,"listing")+gainMetric(ipo,"current"):""}</div>
     </article>`;
   }).join("");
   grid.querySelectorAll(".gmp-info").forEach(btn => btn.addEventListener("click", () => { const pop=btn.nextElementSibling; pop.hidden=!pop.hidden; btn.setAttribute("aria-expanded",String(!pop.hidden)); }));
