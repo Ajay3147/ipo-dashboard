@@ -2,12 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#101827">
   <title>IPO Dashboard</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#111827">
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
 <meta name="mobile-web-app-capable" content="yes">
 </head>
 <body>
@@ -18,6 +19,7 @@
     </a>
     <div class="top-actions">
       <span id="connection" class="connection"><i></i> Not connected</span>
+      <button id="installBtn" class="button button-outline" type="button" hidden>Install app</button>
       <button id="refreshBtn" class="button button-outline" type="button">↻ Refresh</button>
     </div>
   </header>
@@ -47,6 +49,13 @@
         <label class="search"><span>⌕</span><input id="searchInput" type="search" placeholder="Search company..." autocomplete="off"></label>
       </div>
 
+      <nav class="category-tabs" aria-label="IPO category">
+        <button class="category-tab active" data-category="all" aria-pressed="true" type="button">All IPOs <span id="category-all">0</span></button>
+        <button class="category-tab" data-category="mainboard" aria-pressed="false" type="button">Mainboard IPOs <span id="category-mainboard">0</span></button>
+        <button class="category-tab" data-category="sme" aria-pressed="false" type="button">SME IPOs <span id="category-sme">0</span></button>
+        <button class="category-tab" data-category="unknown" aria-pressed="false" type="button">Unclassified <span id="category-unknown">0</span></button>
+      </nav>
+
       <nav class="tabs" aria-label="Filter IPOs">
         <button class="tab active" data-filter="all" type="button">All IPOs <span id="allTabCount">0</span></button>
         <button class="tab" data-filter="upcoming" type="button">Upcoming</button>
@@ -54,21 +63,14 @@
         <button class="tab" data-filter="closed" type="button">Closed / Listed</button>
       </nav>
 
-      <!-- <div id="notice" class="notice">Connect your IPO Guru API key to load IPO data.</div> -->
-      <div class="table-wrap">
-        <table>
-          <thead><tr>
-            <th>Company / IPO</th><th>GMP</th><th>Issue price</th><th>Open date</th><th>Close date</th><th>Status</th><th></th>
-          </tr></thead>
-          <tbody id="ipoRows">
-            <tr><td colspan="7" class="empty">No IPO data loaded yet.</td></tr>
-          </tbody>
-        </table>
+      <div id="notice" class="notice" role="status"></div>
+      <div id="ipoRows" class="ipo-grid">
+        <p class="empty">No IPO data loaded yet.</p>
       </div>
       <div class="panel-footer"><span id="resultCount">0 IPOs</span><span>Values shown as returned by the API</span></div>
     </section>
 
-    <p class="disclaimer">For information only. GMP and subscription figures may be unofficial or delayed. Verify IPO details with the relevant exchange and offer documents before making investment decisions.</p>
+    <p class="disclaimer">For information only. GMP figures may be unofficial or delayed. Verify IPO details with the relevant exchange and offer documents before making investment decisions.</p>
   </main>
 
   <div id="detailModal" class="modal" aria-hidden="true">
@@ -79,7 +81,7 @@
     </section>
   </div>
 
-  <footer>IPO Tracker <span>•</span> Local dashboard</footer>
+  <footer>IPO Tracker <span>•</span> IPO dashboard</footer>
   <script src="app.js"></script>
 </body>
 </html>
