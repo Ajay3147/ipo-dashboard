@@ -106,18 +106,40 @@ function getLotSize(ipo) {
   return value == null ? "—" : /^\d[\d,]*$/.test(String(value)) ? `${value} shares` : asText(value);
 }
 function getIssueSize(ipo) {
-  const raw = exactValue(ipo, ["issuesize", "totalissuesize", "iposize", "offersize", "totaloffersize", "issuesizecrore", "issuesizecr"]);
-  const value = scalar(raw);
-  if (value == null) return "—";
-  const crore = exactValue(ipo, ["issuesizecrore", "issuesizecr"]);
-  return raw === crore && /^\d+(\.\d+)?$/.test(String(value)) ? `₹${value} Cr` : asText(value);
+  const raw = scalar(exactValue(ipo, ["issuesizecrore", "issuesizecr", "issuesize", "totalissuesize", "iposize", "offersize", "totaloffersize"]));
+  if (raw == null) return "—";
+  const text = String(raw).trim();
+  if (/^(?:₹\s*)?[\d,.]+(?:\s*(?:cr\.?|crores?))?$/i.test(text)) return `₹${text.replace(/^₹\s*/, "").replace(/\s*(?:cr\.?|crores?)$/i, "")} Cr`;
+  return text;
 }
-function getOpenDate(ipo) {
-  return asText(findValue(ipo, ["opendate", "startdate", "issueopendate", "ipoopendate"]));
+const dateKeys = {open:["opendate","startdate","issueopendate","ipoopendate"],close:["closedate","enddate","issueclosedate","ipoclosedate"],listing:["listingdate","ipolistingdate","listeddate"]};
+function ipoDate(ipo, kind) { return parseDate(exactValue(ipo,dateKeys[kind])); }
+function formatDate(d) { return d ? new Intl.DateTimeFormat("en-GB",{day:"numeric",month:"short",year:"numeric",timeZone:"Asia/Kolkata"}).format(d) : "—"; }
+function getOpenDate(ipo) { return formatDate(ipoDate(ipo,"open")); }
+function getCloseDate(ipo) { return formatDate(ipoDate(ipo,"close")); }
+function getListingDate(ipo) { return formatDate(ipoDate(ipo,"listing")); }
+function offerDate(ipo) {
+  const a=getOpenDate(ipo), b=getCloseDate(ipo);
+  if(a==="—" && b==="—") return "—";
+  const x=a.split(" "), y=b.split(" ");
+  if(x.length===3 && y.length===3 && x[2]===y[2]) return x[1]===y[1] ? `${x[0]}–${b}` : `${x[0]} ${x[1]} – ${b}`;
+  return `${a} – ${b}`;
 }
-function getCloseDate(ipo) {
-  return asText(findValue(ipo, ["closedate", "enddate", "issueclosedate", "ipoclosedate"]));
+function minInvestment(ipo) {
+  const raw=scalar(exactValue(ipo,["mininvestment","minimuminvestment","minimumapplicationamount","minapplicationamount"]));
+  if(raw==null) return "—";
+  const n=Number(String(raw).replace(/[₹,\s]/g,""));
+  return Number.isFinite(n) ? `₹${n.toLocaleString("en-IN")}` : asText(raw);
 }
+function dateDistance(ipo) {
+  const status=statusOf(ipo);
+  const d=ipoDate(ipo,status==="upcoming"?"open":status==="open"?"close":"listing") || (status==="closed"||status==="listed"?ipoDate(ipo,"close"):null);
+  const day = v => Date.parse(new Intl.DateTimeFormat("en-CA",{year:"numeric",month:"2-digit",day:"2-digit",timeZone:"Asia/Kolkata"}).format(v));
+  return d ? Math.abs(day(d)-day(new Date())) : Infinity;
+}
+const icons={tag:'<path d="M3 3h8l10 10-8 8L3 11z"/><circle cx="7.5" cy="7.5" r="1"/>',layers:'<path d="m12 3 9 5-9 5-9-5z M3 12l9 5 9-5 M3 16l9 5 9-5"/>',wallet:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M16 10h5v4h-5z"/>',trend:'<path d="m3 17 7-7 4 4 7-8 M15 6h6v6"/>',rupee:'<path d="M6 4h12 M6 8h12 M6 4c12 0 12 10 0 10l10 7"/>',chart:'<path d="M4 20V10 M12 20V4 M20 20V13"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4 M17 3v4 M3 10h18"/>',check:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4 M17 3v4 M3 10h18 m-6 5 3 3 4-5"/>'};
+function label(icon,text){return `<span class="ipo-label"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${icons[icon]}</svg>${text}</span>`;}
+function metric(icon,title,value){return `<div>${label(icon,title)}<strong>${escapeHtml(value)}</strong></div>`;}
 
 function gmpParts(ipo) {
   const gmp = ipo.gmp ?? ipo.GMP;
@@ -129,7 +151,8 @@ function gmpParts(ipo) {
     return Number.isFinite(n) ? n : null;
   };
   const price = numeric(rawPrice);
-  const percent = numeric(rawPercent);
+  const upper = Number((getPrice(ipo).match(/[\d,.]+/g) || []).pop()?.replace(/,/g,""));
+  const percent = numeric(rawPercent ?? exactValue(ipo,["gmppercentage","gmppercent"])) ?? (price !== null && upper > 0 ? price / upper * 100 : null);
   return { amount: price === null ? "—" : `₹${price}`, percent };
 }
 function percentText(percent) {
@@ -144,8 +167,8 @@ function getGmp(ipo) {
 }
 
 function getSubscription(ipo) {
-  const raw = exactValue(ipo, ["overallsubscription", "totalsubscription", "subscriptiontimes", "subscription", "subscriptiondetails", "subscriptionstatus"]);
-  const value = scalar(raw) ?? scalar(exactValue(raw, ["overall", "total", "overallsubscription", "totalsubscription", "times", "totaltimes"]));
+  const raw = exactValue(ipo, ["subscriptiontotal", "overallsubscription", "totalsubscription", "subscriptiontimes", "subscription", "subscriptiondetails", "subscriptionstatus"]);
+  const value = scalar(raw) ?? scalar(exactValue(raw, ["overall", "total", "subscriptiontotal", "overallsubscription", "totalsubscription", "times", "totaltimes"]));
   if (value == null) return "—";
   const str = String(value).trim();
   return /^\d+(\.\d+)?x?$/i.test(str) ? str.replace(/x$/i, "") + "x" : "—";
@@ -163,7 +186,7 @@ function hideNotice() { $("notice").className = "notice"; }
 function completeness(ipo) {
   const {amount, percent} = gmpParts(ipo);
   const present = value => !/^(?:₹\s*)?(?:—|–|-|n\/?a|null|undefined|tbd|tba|not available|to be announced)?$/i.test(String(value ?? "").trim());
-  return [getPrice(ipo), getLotSize(ipo), getIssueSize(ipo), amount, percent, getOpenDate(ipo), getCloseDate(ipo)].filter(present).length;
+  return [getPrice(ipo), getLotSize(ipo), getIssueSize(ipo), amount, percent, getOpenDate(ipo), getCloseDate(ipo), getListingDate(ipo), minInvestment(ipo), getSubscription(ipo)].filter(present).length;
 }
 function render() {
   const counts = { upcoming:0, open:0, closed:0, listed:0, unknown:0 };
@@ -185,7 +208,7 @@ function render() {
     return matchFilter && searchText.includes(state.query.toLowerCase());
   });
 
-  filtered.sort((a, b) => completeness(b) - completeness(a));
+  filtered.sort((a, b) => (dateDistance(a) - dateDistance(b)) || completeness(b) - completeness(a));
   $("resultCount").textContent = `${filtered.length} IPO${filtered.length === 1 ? "" : "s"}`;
   const grid = $("ipoRows");
   if (!filtered.length) {
@@ -199,11 +222,13 @@ function render() {
     const category = categoryOf(ipo);
     return `<article class="ipo-card">
       <div class="ipo-card-head"><div><h3>${escapeHtml(getName(ipo))}</h3>${category === "unknown" ? "" : `<span class="ipo-category ipo-category-${category}">${categoryLabel(category)}</span>`}</div><div class="ipo-card-actions"><span class="status status-${status}">${labelStatus(status)}</span><button class="details-link ipo-details" data-detail="${idx}" type="button" aria-label="View IPO details">Details →</button></div></div>
-      <div class="ipo-fields ipo-metrics"><div><span class="ipo-label">Offer price</span><strong>${escapeHtml(getPrice(ipo))}</strong></div><div><span class="ipo-label">Lot size</span><strong>${escapeHtml(getLotSize(ipo))}</strong></div><div><span class="ipo-label">Issue size</span><strong>${escapeHtml(getIssueSize(ipo))}</strong></div></div>
-      <div class="ipo-gmp"><div><span class="ipo-label">GMP</span><strong class="${percentClass(percent)}">${escapeHtml(amount)}</strong></div><div><span class="ipo-label">GMP %</span><strong class="${percentClass(percent)}">${percentText(percent)}</strong></div></div>
-      <div class="ipo-fields ipo-dates"><div><span class="ipo-label">Open date</span><strong>${escapeHtml(getOpenDate(ipo))}</strong></div><div><span class="ipo-label">Close date</span><strong>${escapeHtml(getCloseDate(ipo))}</strong></div></div>
+      <div class="ipo-fields ipo-metrics">${metric("tag","Offer Price",getPrice(ipo))}${metric("layers","Lot Size",getLotSize(ipo))}${metric("wallet","Issue Size",getIssueSize(ipo))}</div>
+      <div class="ipo-gmp"><div>${label("trend","GMP")}<div class="gmp-value"><strong class="${percentClass(percent)}">${percentText(percent)}</strong><button type="button" class="gmp-info" aria-label="Show GMP price" aria-expanded="false" title="GMP Price: ${escapeHtml(amount)}">ⓘ</button><span class="gmp-pop" hidden>GMP Price: ${escapeHtml(amount)}</span></div></div>${metric("rupee","Min. investment",minInvestment(ipo))}${metric("chart","Subscription",getSubscription(ipo))}</div>
+      <div class="gmp-disclaimer"><span aria-hidden="true">ⓘ</span><span>GMP is unofficial and unregulated, and not an indicator of listing price. SEBI has advised against relying on it (PR No. 75/2026). Not investment advice.</span></div>
+      <div class="ipo-fields ipo-dates">${metric("calendar","Offer Date",offerDate(ipo))}${metric("check","Listing Date",getListingDate(ipo))}</div>
     </article>`;
   }).join("");
+  grid.querySelectorAll(".gmp-info").forEach(btn => btn.addEventListener("click", () => { const pop=btn.nextElementSibling; pop.hidden=!pop.hidden; btn.setAttribute("aria-expanded",String(!pop.hidden)); }));
   grid.querySelectorAll("[data-detail]").forEach(btn => btn.addEventListener("click", () => openDetails(state.ipos[Number(btn.dataset.detail)])));
 }
 function escapeHtml(value) {
@@ -217,8 +242,10 @@ function openDetails(ipo) {
     ["Offer price", getPrice(ipo)],
     ["Lot size", getLotSize(ipo)],
     ["Issue size", getIssueSize(ipo)],
-    ["Open date", getOpenDate(ipo)],
-    ["Close date", getCloseDate(ipo)],
+    ["Offer date", offerDate(ipo)],
+    ["Listing date", getListingDate(ipo)],
+    ["Minimum investment", minInvestment(ipo)],
+    ["Total subscription", getSubscription(ipo)],
     ["GMP", getGmp(ipo)]
   ];
   const used = new Set();
@@ -232,11 +259,11 @@ function openDetails(ipo) {
     // Skip GMP because it is already displayed in formatted form
     if (["gmp", "GMP"].includes(key)) continue;
 
-    if (used.has(key.toLowerCase())) continue;
+    if (used.has(key.toLowerCase()) || Object.values(dateKeys).flat().includes(normalizeKey(key))) continue;
 
     html += `<div class="detail-item">
       <span>${escapeHtml(key.replace(/[_-]/g," "))}</span>
-      <strong>${escapeHtml(asText(value))}</strong>
+      <strong>${escapeHtml(/date/i.test(key) && typeof value === "string" && parseDate(value) ? formatDate(parseDate(value)) : asText(value))}</strong>
     </div>`;
 }
   $("modalContent").innerHTML = html;
@@ -270,14 +297,14 @@ async function loadIpos() {
     hideNotice();
     $("connection").className = "connection ok";
     $("connection").innerHTML = "<i></i> API connected";
-    $("lastUpdated").textContent = new Date().toLocaleString("en-IN", {day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit", hour12:true}).replace(/\b(am|pm)\b/gi, m => m.toUpperCase());
+    $("lastUpdated").textContent = new Date().toLocaleString("en-IN", {day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit", hour12:true,timeZone:"Asia/Kolkata"}).replace(/\b(am|pm)\b/gi, m => m.toUpperCase());
   } catch (err) {
     showNotice(err.message, "error");
     $("connection").className = "connection error";
     $("connection").innerHTML = "<i></i> Connection issue";
   } finally {
     $("refreshBtn").disabled = false;
-    $("refreshBtn").textContent = "↻ Refresh";
+    $("refreshBtn").textContent = "↻";
   }
 }
 
