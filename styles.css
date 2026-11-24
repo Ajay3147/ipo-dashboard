@@ -89,3 +89,19 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .ipo-card .gmp-value{display:flex;align-items:center;flex-wrap:nowrap;gap:2px}
 .ipo-card .gmp-info{display:inline-flex;align-items:center;justify-content:center;flex:0 0 20px;width:20px;height:24px;min-width:0;min-height:0;padding:0;border:0;background:transparent;box-shadow:none;appearance:none}
 @media(max-width:700px){.ipo-card .ipo-gmp strong{font-size:14px}.ipo-card .ipo-label{font-size:10px}.ipo-card .ipo-gmp{padding:5px}.ipo-card .ipo-gmp .ipo-label{overflow-wrap:anywhere}.ipo-card .gmp-value strong{white-space:nowrap}.ipo-card .ipo-dates strong{font-size:12px}}
+
+/* V11: compact four-column date/gain row, including narrow phones. */
+.ipo-card .ipo-dates-gains{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1.05fr) repeat(2,minmax(0,1fr));gap:4px;align-items:start}
+.ipo-card .ipo-dates-gains>div{min-width:0}
+.ipo-card .ipo-dates-gains .ipo-label{font-size:10px;gap:2px;line-height:1.2;white-space:normal}
+.ipo-card .ipo-dates-gains .ipo-label svg{width:10px;height:10px;flex-basis:10px}
+.ipo-card .ipo-dates-gains strong{font-size:11px;line-height:1.25;overflow-wrap:normal}
+.ipo-card .ipo-dates-gains .gmp-value{gap:1px;align-items:center}
+.ipo-card .ipo-dates-gains .gmp-info{font-size:11px;flex:0 0 14px;width:14px;height:20px}
+.ipo-card .ipo-dates-gains .gmp-pop{left:auto;right:0;top:auto;bottom:100%}
+.ipo-card .ipo-dates-gains .gmp-value strong{white-space:normal;overflow-wrap:anywhere}
+.install-help{width:min(360px,calc(100% - 32px));border:1px solid #dbe2eb;border-radius:14px;padding:18px;color:#152238;background:white;box-sizing:border-box;font-size:14px;line-height:1.5}
+.install-help::backdrop{background:rgba(15,23,42,.55)}
+.install-help h2{font-size:18px;margin:0 0 8px}.install-help ol{padding-left:20px}.install-help form{text-align:right}.install-help .button{background:#6258d9;color:white;border:0}
+#installBtn[hidden],.gmp-pop[hidden]{display:none!important}
+@media(max-width:380px){.ipo-card .ipo-dates-gains{gap:3px;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr) repeat(2,minmax(0,1fr))}.ipo-card .ipo-dates-gains .ipo-label{font-size:9px}.ipo-card .ipo-dates-gains strong{font-size:10px}.ipo-card .ipo-dates-gains .ipo-label svg{display:none}.ipo-card .ipo-dates-gains .gmp-info{flex-basis:12px;width:12px}}
