@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#101827">
   <title>IPO Dashboard</title>
-  <link rel="stylesheet" href="styles.css?v=11.3">
+  <link rel="stylesheet" href="styles.css?v=11.5">
   <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-192.png">
@@ -56,11 +56,9 @@
         <button class="category-tab" data-category="all" aria-pressed="false" type="button">All IPOs <span id="category-all">0</span></button>
       </nav>
 
-      <nav class="tabs" aria-label="Filter IPOs">
-        <button class="tab active" data-filter="all" type="button">All IPOs <span id="allTabCount">0</span></button>
-        <button class="tab" data-filter="upcoming" type="button">Upcoming</button>
-        <button class="tab" data-filter="open" type="button">Open</button>
-        <button class="tab" data-filter="closed" type="button">Closed / Listed</button>
+      <nav class="tabs swipe-tabs" aria-label="Filter IPOs">
+        <button class="tab active" data-filter="current" aria-pressed="true" type="button">Current &amp; Upcoming <span id="currentTabCount">0</span></button>
+        <button class="tab" data-filter="listed" aria-pressed="false" type="button">Listed <span id="listedTabCount">0</span></button>
       </nav>
 
       <div id="notice" class="notice" role="status"></div>
@@ -89,6 +87,6 @@
     <form method="dialog"><button class="button" type="submit">Done</button></form>
   </dialog>
   <footer>IPO Tracker <span>•</span> IPO dashboard</footer>
-  <script src="app.js?v=11.3"></script>
+  <script src="app.js?v=11.5"></script>
 </body>
 </html>
