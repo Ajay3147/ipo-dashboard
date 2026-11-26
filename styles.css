@@ -120,3 +120,11 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
  .ipo-card .ipo-dates-gains .gmp-info{width:12px;flex-basis:12px;font-size:11px}
  .ipo-card .ipo-dates-gains>div:nth-child(-n+2) strong{white-space:normal;overflow-wrap:normal}
 }
+
+/* V11.4: mobile status switch */
+.tabs.swipe-tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:6px 8px;padding:3px;border:1px solid var(--line);border-radius:24px;background:var(--bg);overflow:hidden}
+.tabs.swipe-tabs .tab{border:0;border-radius:20px;min-height:40px;padding:6px 3px;font-size:13px;white-space:normal;line-height:1.2;text-align:center}
+.tabs.swipe-tabs .tab.active{background:var(--accent);color:white;border:0}
+.tabs.swipe-tabs .tab span{background:transparent;color:inherit;font-size:10px;margin-left:2px}
+#ipoRows{touch-action:pan-y pinch-zoom}
+@media(max-width:380px){.tabs.swipe-tabs .tab{font-size:11px}}
