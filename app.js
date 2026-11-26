@@ -1,4 +1,4 @@
-const state = { ipos: [], filter: "all", category: "mainboard", query: "" };
+const state = { ipos: [], filter: "current", category: "mainboard", query: "" };
 const $ = (id) => document.getElementById(id);
 
 const STATUS_WORDS = {
@@ -37,7 +37,8 @@ function parseDate(value) {
 function statusOf(ipo) {
   const raw = findValue(ipo, ["status", "ipostatus", "currentstatus", "subscriptionstatus"]);
   const s = String(raw ?? "").toLowerCase();
-  if (STATUS_WORDS.listed.some(w => s.includes(w))) return "listed";
+  if (/^(?:listed|trading|listing completed|successfully listed)$/.test(s.trim())) return "listed";
+  if (/awaiting listing|pending listing|not (?:yet )?listed|to be listed|listing pending|closed.*listing/.test(s)) return "closed";
   if (STATUS_WORDS.closed.some(w => s.includes(w))) return "closed";
   if (STATUS_WORDS.upcoming.some(w => s.includes(w))) return "upcoming";
   if (STATUS_WORDS.open.some(w => s === w || s.includes(w))) return "open";
@@ -131,11 +132,20 @@ function minInvestment(ipo) {
   const n=Number(String(raw).replace(/[₹,\s]/g,""));
   return Number.isFinite(n) ? `₹${n.toLocaleString("en-IN")}` : asText(raw);
 }
-function dateDistance(ipo) {
-  const status=statusOf(ipo);
-  const d=ipoDate(ipo,status==="upcoming"?"open":status==="open"?"close":"listing") || (status==="closed"||status==="listed"?ipoDate(ipo,"close"):null);
-  const day = v => Date.parse(new Intl.DateTimeFormat("en-CA",{year:"numeric",month:"2-digit",day:"2-digit",timeZone:"Asia/Kolkata"}).format(v));
-  return d ? Math.abs(day(d)-day(new Date())) : Infinity;
+function currentRank(ipo) {
+  return ({open:0, upcoming:1, closed:2})[statusOf(ipo)] ?? 3;
+}
+function isCurrent(ipo) { return !isListed(ipo) && currentRank(ipo)<3; }
+function sortDate(ipo, kind, descending=false) {
+  const d=ipoDate(ipo,kind);
+  return d ? (descending ? -d.getTime() : d.getTime()) : Infinity;
+}
+function compareIpos(a,b,listed) {
+  if (listed) return (sortDate(a,"listing",true)-sortDate(b,"listing",true)) || completeness(b)-completeness(a);
+  const rank=currentRank(a)-currentRank(b);
+  if(rank) return rank;
+  const kind=({open:"close",upcoming:"open",closed:"listing"})[statusOf(a)];
+  return (sortDate(a,kind)-sortDate(b,kind)) || completeness(b)-completeness(a);
 }
 const icons={tag:'<path d="M3 3h8l10 10-8 8L3 11z"/><circle cx="7.5" cy="7.5" r="1"/>',layers:'<path d="m12 3 9 5-9 5-9-5z M3 12l9 5 9-5 M3 16l9 5 9-5"/>',wallet:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M16 10h5v4h-5z"/>',trend:'<path d="m3 17 7-7 4 4 7-8 M15 6h6v6"/>',rupee:'<path d="M6 4h12 M6 8h12 M6 4c12 0 12 10 0 10l10 7"/>',chart:'<path d="M4 20V10 M12 20V4 M20 20V13"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4 M17 3v4 M3 10h18"/>',check:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4 M17 3v4 M3 10h18 m-6 5 3 3 4-5"/>'};
 function label(icon,text){return `<span class="ipo-label"><svg width="12" height="12" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${icons[icon]}</svg>${text}</span>`;}
@@ -199,7 +209,7 @@ function getSubscription(ipo) {
   return /^\d+(\.\d+)?x?$/i.test(str) ? str.replace(/x$/i, "") + "x" : "—";
 }
 function labelStatus(status) {
-  return ({upcoming:"Upcoming",open:"Open",closed:"Closed",listed:"Listed",unknown:"Unknown"})[status] || "Unknown";
+  return ({upcoming:"Upcoming",open:"Open",closed:"Awaiting Listing",listed:"Listed",unknown:"Unknown"})[status] || "Unknown";
 }
 function showNotice(message, type = "") {
   const el = $("notice");
@@ -223,17 +233,18 @@ function render() {
   $("upcomingCount").textContent = counts.upcoming;
   $("openCount").textContent = counts.open;
   $("closedCount").textContent = counts.closed + counts.listed;
-  $("allTabCount").textContent = categoryRows.length;
+  const listedCount = categoryRows.filter(isListed).length;
+  $("currentTabCount").textContent = categoryRows.filter(isCurrent).length;
+  $("listedTabCount").textContent = listedCount;
 
   const filtered = categoryRows.filter(ipo => {
     const status = statusOf(ipo);
-    const matchFilter = state.filter === "all" ||
-      (state.filter === "closed" ? ["closed","listed"].includes(status) : status === state.filter);
+    const matchFilter = state.filter === "listed" ? isListed(ipo) : isCurrent(ipo);
     const searchText = (getName(ipo) + " " + JSON.stringify(ipo)).toLowerCase();
     return matchFilter && searchText.includes(state.query.toLowerCase());
   });
 
-  filtered.sort((a, b) => (dateDistance(a) - dateDistance(b)) || completeness(b) - completeness(a));
+  filtered.sort((a, b) => compareIpos(a,b,state.filter === "listed"));
   $("resultCount").textContent = `${filtered.length} IPO${filtered.length === 1 ? "" : "s"}`;
   const grid = $("ipoRows");
   if (!filtered.length) {
@@ -342,12 +353,34 @@ document.querySelectorAll(".category-tab").forEach(tab => tab.addEventListener("
   state.category = tab.dataset.category;
   render();
 }));
-document.querySelectorAll(".tab").forEach(tab => tab.addEventListener("click", () => {
-  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-  tab.classList.add("active");
-  state.filter = tab.dataset.filter;
+function switchStatus(filter) {
+  if (filter === state.filter) return;
+  state.filter = filter;
+  document.querySelectorAll(".swipe-tabs .tab").forEach(t => {
+    const active = t.dataset.filter === filter;
+    t.classList.toggle("active", active);
+    t.setAttribute("aria-pressed", String(active));
+  });
   render();
-}));
+  const grid = $("ipoRows");
+  if (grid.animate && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    grid.animate([{opacity:.65, transform:`translateX(${filter === "listed" ? 12 : -12}px)`},{opacity:1,transform:"translateX(0)"}], {duration:160});
+  }
+}
+document.querySelectorAll(".swipe-tabs .tab").forEach(tab => tab.addEventListener("click", () => switchStatus(tab.dataset.filter)));
+const swipeArea = $("ipoRows");
+let swipeStart = null;
+swipeArea.addEventListener("touchstart", e => {
+  swipeStart = e.touches.length === 1 && !e.target.closest("button,a,input,.gmp-pop") ? {x:e.touches[0].clientX,y:e.touches[0].clientY} : null;
+}, {passive:true});
+swipeArea.addEventListener("touchcancel", () => { swipeStart = null; }, {passive:true});
+swipeArea.addEventListener("touchend", e => {
+  if (!swipeStart || !e.changedTouches.length) return;
+  const dx=e.changedTouches[0].clientX-swipeStart.x, dy=e.changedTouches[0].clientY-swipeStart.y;
+  swipeStart=null;
+  if (Math.abs(dx)<55 || Math.abs(dx)<Math.abs(dy)*1.5) return;
+  switchStatus(dx<0 ? "listed" : "current");
+}, {passive:true});
 $("searchInput").addEventListener("input", e => { state.query = e.target.value; render(); });
 $("refreshBtn").addEventListener("click", loadIpos);
 $("closeModal").addEventListener("click", closeDetails);
