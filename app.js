@@ -389,9 +389,13 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") closeDetails
 loadIpos();
 
 if ("serviceWorker" in navigator) {
+  let hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (hadController) { hadController = false; window.location.reload(); }
+  });
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/service-worker.js")
-      .catch(error => console.error("Service Worker:", error));
+    navigator.serviceWorker.register("/service-worker.js", {updateViaCache: "none"})
+      .then(reg => reg.update()).catch(error => console.error("Service Worker:", error));
   });
 }
 
