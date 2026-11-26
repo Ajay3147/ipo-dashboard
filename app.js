@@ -1,6 +1,15 @@
-const state = { ipos: [], filter: "current", category: "mainboard", query: "" };
+const state = { ipos: [], filter: "current", category: "mainboard", query: "", sort: "default", watchOnly: false };
 const $ = (id) => document.getElementById(id);
 
+function stored(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
+function save(key,value) { try { localStorage.setItem(key,JSON.stringify(value)); } catch {} }
+const savedWatch=stored("ipo-watchlist",[]);
+const watch=new Set(Array.isArray(savedWatch)?savedWatch:[]);
+function watchKey(ipo){return categoryOf(ipo)+":"+getName(ipo).toLowerCase().trim()+":"+getOpenDate(ipo);}
+function dayIndia(d){return Date.parse(new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kolkata",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d).filter(x=>x.type!=="literal").sort((a,b)=>["year","month","day"].indexOf(a.type)-["year","month","day"].indexOf(b.type)).map(x=>x.value).join("-")+"T00:00:00Z")/86400000;}
+function countdown(ipo){if(isListed(ipo))return "";const status=statusOf(ipo), kind=({open:"close",upcoming:"open",closed:"listing"})[status], d=kind&&ipoDate(ipo,kind);if(!d)return "";const n=dayIndia(d)-dayIndia(new Date());if(n<0)return "";const verb=({open:"Closes",upcoming:"Opens",closed:"Lists"})[status];return verb+(n===0?" Today":n===1?" Tomorrow":` in ${n} days`);}
+function sortMetric(ipo,mode){if(mode==="gmp")return gmpParts(ipo).percent;if(mode==="subscription")return gainNumber(getSubscription(ipo).replace(/x$/i,""));if(mode==="listing"||mode==="current")return gainParts(ipo,mode).percent;return null;}
+function compareSelected(a,b){const listed=state.filter==="listed";if(!listed){const rank=currentRank(a)-currentRank(b);if(rank)return rank;}if(state.sort==="default"||state.sort==="date")return compareIpos(a,b,listed);const x=sortMetric(a,state.sort),y=sortMetric(b,state.sort);return (x===null? (y===null?0:1):y===null?-1:y-x)||compareIpos(a,b,listed);}
 const STATUS_WORDS = {
   upcoming: ["upcoming", "not yet open", "pre open", "pre-open"],
   open: ["open", "ongoing", "live", "currently open"],
@@ -241,10 +250,11 @@ function render() {
     const status = statusOf(ipo);
     const matchFilter = state.filter === "listed" ? isListed(ipo) : isCurrent(ipo);
     const searchText = (getName(ipo) + " " + JSON.stringify(ipo)).toLowerCase();
-    return matchFilter && searchText.includes(state.query.toLowerCase());
+    return matchFilter && (!state.watchOnly || watch.has(watchKey(ipo))) && searchText.includes(state.query.toLowerCase());
   });
 
-  filtered.sort((a, b) => compareIpos(a,b,state.filter === "listed"));
+  filtered.sort(compareSelected);
+  $("watchCount").textContent=watch.size;
   $("resultCount").textContent = `${filtered.length} IPO${filtered.length === 1 ? "" : "s"}`;
   const grid = $("ipoRows");
   if (!filtered.length) {
@@ -257,13 +267,14 @@ function render() {
     const {amount, percent} = gmpParts(ipo);
     const category = categoryOf(ipo);
     return `<article class="ipo-card">
-      <div class="ipo-card-head"><div><h3>${escapeHtml(getName(ipo))}</h3>${category === "unknown" ? "" : `<span class="ipo-category ipo-category-${category}">${categoryLabel(category)}</span>`}</div><div class="ipo-card-actions"><span class="status status-${status}">${labelStatus(status)}</span><button class="details-link ipo-details" data-detail="${idx}" type="button" aria-label="View IPO details">Details →</button></div></div>
-      <div class="ipo-fields ipo-metrics">${metric("tag","Offer price",getPrice(ipo))}${metric("layers","Lot size",getLotSize(ipo))}${metric("wallet","Issue size",getIssueSize(ipo))}</div>
-      <div class="ipo-gmp"><div>${label("trend","GMP %")}<div class="gmp-value"><strong class="${percentClass(percent)}">${percentText(percent)}</strong><button type="button" class="gmp-info" aria-label="Show GMP Price" aria-expanded="false" title="GMP Price: ${escapeHtml(amount)}">ⓘ</button><span class="gmp-pop" hidden>GMP Price: ${escapeHtml(amount)}</span></div></div>${metric("rupee","Min. investment",minInvestment(ipo))}${metric("chart","Subscription",getSubscription(ipo))}</div>
-      <div class="gmp-disclaimer"><span aria-hidden="true">ⓘ</span><span>GMP is unofficial and unregulated, and not an indicator of listing price. SEBI has advised against relying on it (PR No. 75/2026). Not investment advice.</span></div>
-      <div class="ipo-fields ipo-dates${isListed(ipo)?" ipo-dates-gains":""}">${metric("calendar","Offer date",offerDate(ipo))}${metric("check","Listing date",getListingDate(ipo))}${isListed(ipo)?gainMetric(ipo,"listing")+gainMetric(ipo,"current"):""}</div>
+      <div class="ipo-card-head"><div><h3>${escapeHtml(getName(ipo))}</h3>${category === "unknown" ? "" : `<span class="ipo-category ipo-category-${category}">${categoryLabel(category)}</span>`}</div><div class="ipo-card-actions"><span class="status status-${status}">${labelStatus(status)}</span>${countdown(ipo)?`<span class="countdown">${escapeHtml(countdown(ipo))}</span>`:""}<button class="details-link ipo-details" data-detail="${idx}" type="button" aria-label="View IPO details">Details →</button><div class="card-tools"><button type="button" class="mini-action" data-watch="${idx}" aria-label="${watch.has(watchKey(ipo))?"Remove from":"Add to"} watchlist" aria-pressed="${watch.has(watchKey(ipo))}">${watch.has(watchKey(ipo))?"★":"☆"}</button><button type="button" class="mini-action" data-share="${idx}" aria-label="Share IPO"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m9 10 6-3m-6 7 6 3"/></svg></button></div></div></div>
+      <div class="ipo-fields ipo-metrics">${metric("tag","Offer Price",getPrice(ipo))}${metric("layers","Lot Size",getLotSize(ipo))}${metric("wallet","Issue Size",getIssueSize(ipo))}</div>
+      <div class="ipo-gmp"><div>${label("trend","GMP %")}<div class="gmp-value"><strong class="${percentClass(percent)}">${percentText(percent)}</strong><button type="button" class="gmp-info" aria-label="Show GMP Price" aria-expanded="false" title="GMP Price: ${escapeHtml(amount)}">ⓘ</button><span class="gmp-pop" hidden>GMP Price: ${escapeHtml(amount)}</span></div></div>${metric("rupee","Min. Investment",minInvestment(ipo))}${metric("chart","Subscription",getSubscription(ipo))}</div>
+      <div class="ipo-fields ipo-dates${isListed(ipo)?" ipo-dates-gains":""}">${metric("calendar","Offer Date",offerDate(ipo))}${metric("check","Listing Date",getListingDate(ipo))}${isListed(ipo)?gainMetric(ipo,"listing")+gainMetric(ipo,"current"):""}</div>
     </article>`;
   }).join("");
+  grid.querySelectorAll("[data-watch]").forEach(btn=>btn.addEventListener("click",()=>{const key=watchKey(state.ipos[Number(btn.dataset.watch)]);if(watch.has(key))watch.delete(key);else watch.add(key);save("ipo-watchlist",[...watch]);render();}));
+  grid.querySelectorAll("[data-share]").forEach(btn=>btn.addEventListener("click",()=>shareIpo(state.ipos[Number(btn.dataset.share)])));
   grid.querySelectorAll(".gmp-info").forEach(btn => btn.addEventListener("click", () => { const pop=btn.nextElementSibling; pop.hidden=!pop.hidden; btn.setAttribute("aria-expanded",String(!pop.hidden)); }));
   grid.querySelectorAll("[data-detail]").forEach(btn => btn.addEventListener("click", () => openDetails(state.ipos[Number(btn.dataset.detail)])));
 }
@@ -275,11 +286,11 @@ function openDetails(ipo) {
   const preferred = [
     ["Status", labelStatus(statusOf(ipo))],
     ["IPO category", categoryLabel(categoryOf(ipo))],
-    ["Offer price", getPrice(ipo)],
-    ["Lot size", getLotSize(ipo)],
-    ["Issue size", getIssueSize(ipo)],
-    ["Offer date", offerDate(ipo)],
-    ["Listing date", getListingDate(ipo)],
+    ["Offer Price", getPrice(ipo)],
+    ["Lot Size", getLotSize(ipo)],
+    ["Issue Size", getIssueSize(ipo)],
+    ["Offer Date", offerDate(ipo)],
+    ["Listing Date", getListingDate(ipo)],
     ["Minimum investment", minInvestment(ipo)],
     ["Total subscription", getSubscription(ipo)],
     ["GMP", getGmp(ipo)],
@@ -312,6 +323,7 @@ function closeDetails() {
   $("detailModal").setAttribute("aria-hidden","true");
 }
 async function loadIpos() {
+  if ($("refreshBtn").disabled) return;
   $("refreshBtn").disabled = true;
   $("refreshBtn").textContent = "Loading…";
   $("connection").className = "connection";
@@ -345,14 +357,14 @@ async function loadIpos() {
   }
 }
 
-document.querySelectorAll(".category-tab").forEach(tab => tab.addEventListener("click", () => {
-  document.querySelectorAll(".category-tab").forEach(t => {
-    t.classList.toggle("active", t === tab);
-    t.setAttribute("aria-pressed", String(t === tab));
-  });
-  state.category = tab.dataset.category;
-  render();
-}));
+function selectCategory(category, watchOnly=false){
+ state.category=category; state.watchOnly=watchOnly; $("watchFilter").setAttribute("aria-pressed",String(watchOnly));
+ $("dashboard").hidden=false; $("morePage").hidden=true;
+ document.querySelectorAll(".category-tab").forEach(t=>{const active=t.dataset.category===category;t.classList.toggle("active",active);t.setAttribute("aria-pressed",String(active));});
+ render(); window.scrollTo(0,0);
+}
+document.querySelectorAll("[data-category]").forEach(t=>t.addEventListener("click",()=>selectCategory(t.dataset.category)));
+$("moreBtn").addEventListener("click",()=>{ $("dashboard").hidden=true;$("morePage").hidden=false;document.querySelectorAll(".category-tab").forEach(t=>{t.classList.toggle("active",t.id==="moreBtn");t.setAttribute("aria-pressed",String(t.id==="moreBtn"));});window.scrollTo(0,0);});
 function switchStatus(filter) {
   if (filter === state.filter) return;
   state.filter = filter;
@@ -386,16 +398,32 @@ $("refreshBtn").addEventListener("click", loadIpos);
 $("closeModal").addEventListener("click", closeDetails);
 $("detailModal").addEventListener("click", e => { if (e.target.dataset.close) closeDetails(); });
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeDetails(); });
+async function shareIpo(ipo){const text=[getName(ipo),`Offer Price: ${getPrice(ipo)}`,`Offer Date: ${offerDate(ipo)}`,`Listing Date: ${getListingDate(ipo)}`,`Subscription: ${getSubscription(ipo)}`,`GMP: ${getGmp(ipo)}`,"GMP is unofficial and unregulated. Not investment advice.",location.origin].join("\n");try{if(navigator.share){await navigator.share({title:getName(ipo),text});return;}if(navigator.clipboard){await navigator.clipboard.writeText(text);showNotice("IPO information copied.");return;}window.prompt("Copy IPO information",text);}catch(e){if(e.name!=="AbortError")window.prompt("Copy IPO information",text);}}
+$("watchFilter").addEventListener("click",()=>{state.watchOnly=!state.watchOnly;$("watchFilter").setAttribute("aria-pressed",String(state.watchOnly));render();});
+$("sortSelect").addEventListener("change",e=>{state.sort=e.target.value;render();});
+const themes=["system","light","dark"];let theme=stored("ipo-theme","system");if(!themes.includes(theme))theme="system";
+function applyTheme(){document.documentElement.dataset.theme=theme;document.querySelectorAll("[data-theme-choice]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.themeChoice===theme)));}
+applyTheme();document.querySelectorAll("[data-theme-choice]").forEach(b=>b.addEventListener("click",()=>{theme=b.dataset.themeChoice;save("ipo-theme",theme);applyTheme();}));
+const pref=(id,key,fallback,apply)=>{const el=$(id),check=el.type==="checkbox";if(check)el.checked=stored(key,fallback);else el.value=stored(key,fallback);const update=()=>{const value=check?el.checked:el.value;save(key,value);apply(value);};el.addEventListener("change",update);update();};
+pref("compactPref","ipo-compact",true,v=>document.documentElement.classList.toggle("comfortable",!v));
+pref("countdownPref","ipo-countdown",true,v=>document.documentElement.classList.toggle("hide-countdown",!v));
+pref("defaultPref","ipo-default-category","mainboard",()=>{});
+let refreshTimer;pref("refreshPref","ipo-refresh","0",v=>{clearInterval(refreshTimer);if(["5","15","30"].includes(v))refreshTimer=setInterval(()=>{if(!document.hidden)loadIpos();},Number(v)*60000);});
+$("myWatch").addEventListener("click",()=>selectCategory("all",true));
+$("shareApp").addEventListener("click",async()=>{try{if(navigator.share)await navigator.share({title:"IPO Tracker",url:location.origin});else if(navigator.clipboard){await navigator.clipboard.writeText(location.origin);alert("App link copied");}else window.prompt("Copy app link",location.origin);}catch(e){if(e.name!=="AbortError")window.prompt("Copy app link",location.origin);}});
+$("feedbackBtn").addEventListener("click",()=>{const message=window.prompt("Describe your feedback. You can copy it to send to the app owner.");if(message)window.prompt("Copy feedback",message);});
+selectCategory(["mainboard","sme","all"].includes($("defaultPref").value)?$("defaultPref").value:"mainboard");
+let pull=null;const pullStatus=$("pullStatus");
+document.addEventListener("touchstart",e=>{pull=!$("dashboard").hidden&&window.scrollY<=1&&e.touches.length===1&&!e.target.closest("button,input,select,a,dialog,.modal")?{x:e.touches[0].clientX,y:e.touches[0].clientY}:null;},{passive:true});
+document.addEventListener("touchmove",e=>{if(!pull||e.touches.length!==1)return;const dx=e.touches[0].clientX-pull.x,dy=e.touches[0].clientY-pull.y;if(dy>25&&dy>Math.abs(dx)*1.5&&window.scrollY<=1){pullStatus.hidden=false;pullStatus.textContent=dy>=75?"Release to refresh":"Pull to refresh";}else{pullStatus.hidden=true;}},{passive:true});
+document.addEventListener("touchcancel",()=>{pull=null;pullStatus.hidden=true;},{passive:true});
+document.addEventListener("touchend",async e=>{if(!pull)return;const start=pull;pull=null;const t=e.changedTouches[0];if(t&&t.clientY-start.y>=75&&t.clientY-start.y>Math.abs(t.clientX-start.x)*1.5&&window.scrollY<=1){pullStatus.hidden=false;pullStatus.textContent="Refreshing…";await loadIpos();}pullStatus.hidden=true;},{passive:true});
 loadIpos();
 
 if ("serviceWorker" in navigator) {
-  let hadController = !!navigator.serviceWorker.controller;
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (hadController) { hadController = false; window.location.reload(); }
-  });
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/service-worker.js", {updateViaCache: "none"})
-      .then(reg => reg.update()).catch(error => console.error("Service Worker:", error));
+    navigator.serviceWorker.register("/service-worker.js")
+      .catch(error => console.error("Service Worker:", error));
   });
 }
 
@@ -403,17 +431,20 @@ let installPrompt;
 const installButton = $("installBtn");
 const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const standalone = () => navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
-if (ios && !standalone()) installButton.hidden = false;
+const installMore=$("installMore");
+function showInstall(show){installButton.hidden=!show;installMore.hidden=!show;}
+showInstall(!standalone());
 window.addEventListener("beforeinstallprompt", event => {
   event.preventDefault(); installPrompt = event;
-  if (!standalone()) installButton.hidden = false;
+  if (!standalone()) showInstall(true);
 });
-installButton.addEventListener("click", async () => {
+async function requestInstall() {
   if (standalone()) return;
   if (installPrompt) {
     const prompt = installPrompt; installPrompt = null;
-    try { await prompt.prompt(); const choice=await prompt.userChoice; installButton.hidden=choice.outcome==="accepted"; }
+    try { await prompt.prompt(); const choice=await prompt.userChoice; showInstall(choice.outcome!=="accepted"); }
     catch { $("installHelp").showModal(); }
   } else { $("installHelp").showModal(); }
-});
-window.addEventListener("appinstalled", () => { installButton.hidden = true; installPrompt = null; });
+}
+installButton.addEventListener("click",requestInstall);installMore.addEventListener("click",requestInstall);
+window.addEventListener("appinstalled", () => { showInstall(false); installPrompt = null; });
