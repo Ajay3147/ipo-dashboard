@@ -1,5 +1,5 @@
-const CACHE_NAME = 'ipo-dashboard-v11.1-gains-ios';
-const APP_FILES = ['/', '/index.html', '/styles.css', '/app.js', '/styles.css?v=11.1', '/app.js?v=11.1', '/manifest.json', '/icon-192.png', '/icon-512.png'];
+const CACHE_NAME = 'ipo-dashboard-v11.5-r3-gains-ios';
+const APP_FILES = ['/', '/index.html', '/styles.css', '/app.js', '/styles.css?v=11.5-r3', '/app.js?v=11.5-r3', '/manifest.json', '/icon-192.png', '/icon-512.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_FILES)).then(() => self.skipWaiting()));
 });
@@ -9,8 +9,8 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   if (event.request.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
-  if (!APP_FILES.includes(url.pathname) && event.request.mode !== 'navigate') return;
-  event.respondWith(fetch(event.request).catch(async () => {
+  if (!APP_FILES.includes(url.pathname) && !APP_FILES.includes(url.pathname + url.search) && event.request.mode !== 'navigate') return;
+  event.respondWith(fetch(event.request, {cache: "no-store"}).catch(async () => {
     const cached = await caches.match(event.request);
     return cached || (event.request.mode === 'navigate' ? await caches.match('/index.html') : null) || Response.error();
   }));
