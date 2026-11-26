@@ -1,5 +1,5 @@
-const CACHE_NAME = 'ipo-dashboard-v11.8-gains-ios';
-const APP_FILES = ['/', '/index.html', '/styles.css', '/app.js', '/styles.css?v=11.8', '/app.js?v=11.8', '/manifest.json', '/icon-192.png', '/icon-512.png'];
+const CACHE_NAME = 'ipo-dashboard-v11.9-gains-ios';
+const APP_FILES = ['/', '/index.html', '/styles.css', '/app.js', '/styles.css?v=11.9', '/app.js?v=11.9', '/manifest.json', '/icon-192.png', '/icon-512.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_FILES)).then(() => self.skipWaiting()));
 });
